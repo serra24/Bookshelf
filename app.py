@@ -2,12 +2,15 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookshelf.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = '12345'  
+app.config['SECRET_KEY'] = '12345'
+app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'  # Change this to your preferred secret key
 db = SQLAlchemy(app)
+jwt = JWTManager(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -121,15 +124,16 @@ def login():
         return jsonify({'error': 'Missing username or password'}), 400
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        login_user(user)
-        return jsonify({'message': 'Logged in successfully!'})
+        access_token = create_access_token(identity=user.id)
+        return jsonify({'access_token': access_token}), 200
     else:
         return jsonify({'error': 'Invalid username or password.'}), 401
 
 @app.route('/logout', methods=['POST'])
-@login_required
+@jwt_required()
 def logout():
-    logout_user()
+    # You can implement logout logic here, but JWT tokens are stateless,
+    # so typically there's no need to explicitly logout.
     return jsonify({'message': 'Logged out successfully!'})
 
 if __name__ == '__main__':
