@@ -3,29 +3,33 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookshelf.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = '12345'
-app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'  # Change this to your preferred secret key
+app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 jwt = JWTManager(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 
 # Database Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    is_student = db.Column(db.Boolean, default=True)
+    is_instructor = db.Column(db.Boolean, default=False)  # New column
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
@@ -132,8 +136,7 @@ def login():
 @app.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    # You can implement logout logic here, but JWT tokens are stateless,
-    # so typically there's no need to explicitly logout.
+    
     return jsonify({'message': 'Logged out successfully!'})
 
 if __name__ == '__main__':
